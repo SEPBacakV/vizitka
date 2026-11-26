@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA a Android meta tagy pro přidání na plochu telefonu -->
+    <meta name="theme-color" content="#006A6A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Vizitka">
+    <meta name="description" content="Skenování vizitek a převod kontaktních údajů do standardizovaného souboru .vcf pro Android Kontakty.">
+    <!-- SVG ikona aplikace (favicon i ikona na plochu) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23006A6A'/%3E%3Crect x='11' y='17' width='42' height='30' rx='5' fill='%239CF1F0'/%3E%3Ccircle cx='23' cy='29' r='4.5' fill='%23006A6A'/%3E%3Cpath d='M16.5 40c1-3.8 3.5-5.5 6.5-5.5s5.5 1.7 6.5 5.5' fill='none' stroke='%23006A6A' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M35 27h11M35 34h8' stroke='%23006A6A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23006A6A'/%3E%3Crect x='11' y='17' width='42' height='30' rx='5' fill='%239CF1F0'/%3E%3Ccircle cx='23' cy='29' r='4.5' fill='%23006A6A'/%3E%3Cpath d='M16.5 40c1-3.8 3.5-5.5 6.5-5.5s5.5 1.7 6.5 5.5' fill='none' stroke='%23006A6A' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M35 27h11M35 34h8' stroke='%23006A6A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+    <title>Vizitka do kontaktů</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Písmo Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    colors: {
+                        m3: {
+                            primary: '#006A6A',
+                            onPrimary: '#FFFFFF',
+                            primaryContainer: '#9CF1F0',
+                            onPrimaryContainer: '#002020',
+                            secondary: '#4A6363',
+                            secondaryContainer: '#CCE8E7',
+                            onSecondaryContainer: '#051F1F',
+                            surface: '#F4FBFA',
+                            surfaceContainer: '#E8F2F1',
+                            surfaceContainerLow: '#EFF7F6',
+                            surfaceContainerHigh: '#E2ECEB',
+                            outline: '#6F7979',
+                            outlineVariant: '#BEC9C8',
+                            error: '#BA1A1A',
+                            errorContainer: '#FFDAD6',
+                            onErrorContainer: '#410002'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            background-color: #E2ECEB;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-fast {
+            animation: spin 0.8s linear infinite;
+        }
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-900 antialiased min-h-screen flex justify-center sm:py-6 sm:px-4">
+
+    <!-- Hlavní kontejner mobilní Android aplikace -->
+    <div class="w-full max-w-md bg-m3-surface min-h-screen sm:min-h-[820px] sm:rounded-[28px] sm:shadow-xl sm:border sm:border-m3-outlineVariant/40 flex flex-col overflow-x-hidden relative">
+
+        <!-- 1. HORNÍ LIŠTA (Material Design 3 Top App Bar) -->
+        <header class="bg-m3-surface/95 backdrop-blur-md sticky top-0 z-20 px-4 py-3 border-b border-m3-outlineVariant/30 flex items-center justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-2xl bg-m3-primaryContainer text-m3-onPrimaryContainer flex items-center justify-center shadow-sm shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="14" x="3" y="5" rx="2" />
+                        <circle cx="9" cy="11" r="2" />
+                        <path d="M15 9h3" />
+                        <path d="M15 13h3" />
+                        <path d="M6.5 16c.5-1.5 1.5-2 2.5-2s2 .5 2.5 2" />
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-semibold leading-tight text-slate-900 truncate">Vizitka do kontaktů</h1>
+                    <p class="text-xs text-slate-500 truncate">AI skener a převod do .vcf</p>
+                </div>
+            </div>
+
+            <!-- Tlačítko Nastavení (ozubené kolo) s indikátorem vlastního API klíče -->
+            <button id="openSettingsBtn" type="button" aria-label="Nastavení API klíče" title="Nastavení Gemini API klíče"
+                class="relative p-2.5 rounded-full text-m3-secondary hover:bg-m3-secondaryContainer/60 active:scale-95 transition shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <!-- Jemný barevný indikátor při aktivním vlastním API klíči -->
+                <span id="apiKeyIndicator" class="hidden absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-m3-surface"></span>
+            </button>
+        </header>
+
+        <!-- HLAVNÍ OBSAH APLIKACE -->
+        <main class="flex-1 p-4 pb-28 space-y-5">
+
+            <!-- === POHLED 1 & 2: VSTUP (Vyfotit / Text) + FORMULÁŘ === -->
+            <div id="scannerWorkspace" class="space-y-5">
+
+                <!-- Karta pro vstup (Fotka nebo Text podle aktivní záložky) -->
+                <section class="bg-white rounded-3xl p-4 shadow-sm border border-m3-outlineVariant/30 space-y-4">
+
+                    <!-- Panel: Vyfotit / Nahrát -->
+                    <div id="panelImage" class="space-y-3">
+                        <div class="flex items-center justify-between px-1">
+                            <h2 class="text-sm font-semibold text-slate-800">Fotka vizitky nebo screenshot</h2>
+                            <span class="text-[11px] text-slate-500">JPG, PNG, WEBP</span>
+                        </div>
+
+                        <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden">
+                        <input id="galleryInput" type="file" accept="image/*" class="hidden">
+
+                        <!-- Tlačítka pro výběr fotky -->
+                        <div id="uploadDropzone" class="grid grid-cols-2 gap-3">
+                            <button id="openCameraBtn" type="button"
+                                class="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl bg-m3-surfaceContainerLow hover:bg-m3-secondaryContainer/50 active:scale-[0.98] border border-dashed border-m3-primary/40 transition text-m3-primary">
+                                <div class="w-11 h-11 rounded-full bg-m3-primaryContainer/80 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-m3-onPrimaryContainer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                                        <circle cx="12" cy="13" r="3"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-800">Vyfotit vizitku</span>
+                            </button>
+
+                            <button id="openGalleryBtn" type="button"
+                                class="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl bg-m3-surfaceContainerLow hover:bg-m3-secondaryContainer/50 active:scale-[0.98] border border-dashed border-m3-outlineVariant transition text-slate-700">
+                                <div class="w-11 h-11 rounded-full bg-m3-surfaceContainerHigh flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                        <circle cx="9" cy="9" r="2"/>
+                                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-slate-800">Nahrát z galerie</span>
+                            </button>
+                        </div>
+
+                        <!-- Náhled nahraného obrázku -->
+                        <div id="imagePreviewContainer" class="hidden relative rounded-2xl overflow-hidden bg-slate-900/5 border border-m3-outlineVariant/50">
+                            <img id="imagePreview" src="" alt="Náhled vizitky" class="w-full max-h-60 object-contain mx-auto">
+                            <button id="removeImageBtn" type="button" aria-label="Odstranit obrázek"
+                                class="absolute top-2.5 right-2.5 bg-slate-900/75 hover:bg-slate-900 text-white rounded-full p-2 backdrop-blur-sm transition active:scale-95">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                                </svg>
+                            </button>
+                            <div class="bg-slate-900/65 text-white text-xs px-3 py-1.5 absolute bottom-0 inset-x-0 flex justify-between items-center backdrop-blur-sm">
+                                <span id="imageFileName" class="truncate max-w-[70%]">vizitka.jpg</span>
+                                <button id="changeImageBtn" type="button" class="underline font-medium hover:text-m3-primaryContainer">Změnit</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel: Vložit text -->
+                    <div id="panelText" class="hidden space-y-2">
+                        <div class="flex items-center justify-between px-1">
+                            <label for="rawTextInput" class="text-sm font-semibold text-slate-800">
+                                E-mailový podpis nebo kontakt z webu
+                            </label>
+                            <button id="clearTextBtn" type="button" class="text-xs font-medium text-m3-secondary hover:text-m3-primary px-2 py-1 rounded-lg transition">
+                                Vymazat
+                            </button>
+                        </div>
+                        <textarea id="rawTextInput" rows="5"
+                            placeholder="Vložte text, např.:&#10;Ing. Jana Nováková, Ph.D.&#10;Obchodní ředitelka | ACME s.r.o.&#10;Tel: 777 123 456&#10;jana.novakova@acme.cz, www.acme.cz&#10;Václavské náměstí 1, 110 00 Praha 1&#10;IČO: 12345678"
+                            class="w-full rounded-2xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/20 outline-none p-3.5 text-sm text-slate-800 placeholder:text-slate-400 transition resize-none"></textarea>
+                    </div>
+
+                    <!-- Tlačítko pro AI rozpoznání -->
+                    <button id="extractBtn" type="button"
+                        class="w-full py-3.5 px-5 rounded-full bg-m3-primary hover:bg-[#005858] active:scale-[0.99] text-m3-onPrimary font-medium text-sm shadow-sm flex items-center justify-center gap-2.5 transition disabled:opacity-60 disabled:pointer-events-none">
+                        <svg id="extractIcon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                        </svg>
+                        <svg id="extractSpinner" xmlns="http://www.w3.org/2000/svg" class="hidden w-5 h-5 animate-spin-fast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle class="opacity-25" cx="12" cy="12" r="10"></circle>
+                            <path class="opacity-90" d="M4 12a8 8 0 018-8"></path>
+                        </svg>
+                        <span id="extractBtnText">Rozpoznat údaje pomocí AI</span>
+                    </button>
+
+                    <!-- Stavová hláška (chyba, úspěch, případně tlačítko do Nastavení API) -->
+                    <div id="statusBanner" class="hidden rounded-2xl px-4 py-3 text-sm space-y-2.5 transition-all" role="alert">
+                        <div class="flex items-start gap-2.5">
+                            <span id="statusIcon" class="mt-0.5 shrink-0"></span>
+                            <span id="statusMessage" class="leading-snug"></span>
+                        </div>
+                        <div id="statusActionWrap" class="hidden pl-6">
+                            <button id="statusOpenSettingsBtn" type="button"
+                                class="text-xs font-semibold px-3.5 py-2 rounded-full bg-m3-error text-white hover:opacity-90 active:scale-95 transition">
+                                Otevřít nastavení API klíče
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Editovatelný formulář kontaktu -->
+                <section id="contactFormSection" class="bg-white rounded-3xl p-4 shadow-sm border border-m3-outlineVariant/30 space-y-5">
+                    <div class="flex items-center justify-between border-b border-m3-outlineVariant/20 pb-3">
+                        <div>
+                            <h2 class="text-base font-semibold text-slate-900">Údaje kontaktu</h2>
+                            <p id="formSubtitle" class="text-xs text-slate-500">Zkontrolujte, upravte nebo zadejte ručně</p>
+                        </div>
+                        <span id="filledBadge" class="hidden text-[11px] font-medium px-2.5 py-1 rounded-full bg-m3-primaryContainer text-m3-onPrimaryContainer">
+                            Načteno
+                        </span>
+                    </div>
+
+                    <form id="contactForm" class="space-y-4" autocomplete="off">
+                        <!-- Jméno a příjmení -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="firstName" class="block text-xs font-medium text-slate-600 mb-1 px-1">Jméno</label>
+                                <input id="firstName" name="firstName" type="text" placeholder="Jana"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div>
+                                <label for="lastName" class="block text-xs font-medium text-slate-600 mb-1 px-1">Příjmení</label>
+                                <input id="lastName" name="lastName" type="text" placeholder="Nováková"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- Tituly -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="prefix" class="block text-xs font-medium text-slate-600 mb-1 px-1">Titul před jménem</label>
+                                <input id="prefix" name="prefix" type="text" placeholder="Ing., Mgr."
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div>
+                                <label for="suffix" class="block text-xs font-medium text-slate-600 mb-1 px-1">Titul za jménem</label>
+                                <input id="suffix" name="suffix" type="text" placeholder="Ph.D., MBA"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- Firma a pozice -->
+                        <div class="space-y-3 pt-1">
+                            <div>
+                                <label for="company" class="block text-xs font-medium text-slate-600 mb-1 px-1">Firma</label>
+                                <input id="company" name="company" type="text" placeholder="ACME s.r.o."
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div>
+                                <label for="title" class="block text-xs font-medium text-slate-600 mb-1 px-1">Pracovní pozice</label>
+                                <input id="title" name="title" type="text" placeholder="Obchodní ředitelka"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- Telefony -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div>
+                                <label for="mobile" class="block text-xs font-medium text-slate-600 mb-1 px-1">Mobil</label>
+                                <input id="mobile" name="mobile" type="tel" placeholder="+420 777 123 456"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div>
+                                <label for="workPhone" class="block text-xs font-medium text-slate-600 mb-1 px-1">Pracovní telefon</label>
+                                <input id="workPhone" name="workPhone" type="tel" placeholder="+420 222 333 444"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- E-mail a web -->
+                        <div class="space-y-3">
+                            <div>
+                                <label for="email" class="block text-xs font-medium text-slate-600 mb-1 px-1">E-mail</label>
+                                <input id="email" name="email" type="email" placeholder="jana.novakova@acme.cz"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div>
+                                <label for="website" class="block text-xs font-medium text-slate-600 mb-1 px-1">Web</label>
+                                <input id="website" name="website" type="url" placeholder="https://www.acme.cz"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- Adresa -->
+                        <div class="pt-1 space-y-3">
+                            <p class="text-xs font-semibold uppercase tracking-wider text-m3-secondary px-1">Adresa</p>
+                            <div>
+                                <label for="street" class="block text-xs font-medium text-slate-600 mb-1 px-1">Ulice a číslo</label>
+                                <input id="street" name="street" type="text" placeholder="Václavské náměstí 1"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="col-span-2">
+                                    <label for="city" class="block text-xs font-medium text-slate-600 mb-1 px-1">Město</label>
+                                    <input id="city" name="city" type="text" placeholder="Praha 1"
+                                        class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                                </div>
+                                <div>
+                                    <label for="zip" class="block text-xs font-medium text-slate-600 mb-1 px-1">PSČ</label>
+                                    <input id="zip" name="zip" type="text" placeholder="110 00"
+                                        class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="country" class="block text-xs font-medium text-slate-600 mb-1 px-1">Země</label>
+                                <input id="country" name="country" type="text" placeholder="Česká republika"
+                                    class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition">
+                            </div>
+                        </div>
+
+                        <!-- Poznámka -->
+                        <div class="pt-1">
+                            <label for="note" class="block text-xs font-medium text-slate-600 mb-1 px-1">Poznámka (IČO, DIČ, LinkedIn…)</label>
+                            <textarea id="note" name="note" rows="3" placeholder="IČO: 12345678, DIČ: CZ12345678..."
+                                class="w-full rounded-xl bg-m3-surfaceContainerLow border border-m3-outlineVariant/70 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none px-3 py-2.5 text-sm transition resize-none"></textarea>
+                        </div>
+                    </form>
+
+                    <!-- Akční tlačítka pro vCard a historii -->
+                    <div class="pt-2 space-y-2.5">
+                        <!-- Hlavní tlačítko: Stáhnout .vcf a uložit do historie -->
+                        <button id="downloadAndSaveBtn" type="button"
+                            class="w-full py-3.5 px-5 rounded-full bg-m3-primary hover:bg-[#005858] active:scale-[0.98] text-m3-onPrimary font-semibold text-sm shadow-md shadow-m3-primary/20 flex items-center justify-center gap-2 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" x2="12" y1="15" y2="3"/>
+                            </svg>
+                            <span>Stáhnout .vcf a uložit do historie</span>
+                        </button>
+
+                        <!-- Druhá řada: Uložit do historie -->
+                        <button id="saveHistoryOnlyBtn" type="button"
+                            class="w-full py-3 px-4 rounded-full bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:bg-m3-primaryContainer/70 active:scale-[0.98] text-sm font-medium transition flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            <span>Uložit do historie</span>
+                        </button>
+
+                        <!-- Třetí řada: Zobrazit / zkopírovat vCard + Vymazat formulář -->
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <button id="togglePreviewBtn" type="button" aria-expanded="false"
+                                class="py-2.5 px-3 rounded-full bg-m3-surfaceContainer text-m3-onSecondaryContainer hover:bg-m3-secondaryContainer/70 active:scale-[0.98] text-xs font-medium transition flex items-center justify-center gap-1.5">
+                                <svg id="previewChevron" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m6 9 6 6 6-6"/>
+                                </svg>
+                                <span class="truncate">Zobrazit / zkopírovat vCard</span>
+                            </button>
+
+                            <button id="resetFormBtn" type="button"
+                                class="py-2.5 px-3 rounded-full border border-m3-outlineVariant text-m3-secondary hover:bg-m3-surfaceContainerLow active:scale-[0.98] text-xs font-medium transition flex items-center justify-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                </svg>
+                                <span class="truncate">Vymazat formulář</span>
+                            </button>
+                        </div>
+
+                        <!-- Sbalitelný náhled vCard 3.0 -->
+                        <div id="vcardPreviewBox" class="hidden rounded-2xl bg-slate-900 text-slate-100 p-3.5 space-y-2.5">
+                            <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                                <span id="vcardFileNamePreview" class="text-xs font-mono text-teal-300 truncate pr-2">kontakt.vcf</span>
+                                <button id="copyVcardBtn" type="button"
+                                    class="text-xs font-medium bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 transition active:scale-95 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                                    </svg>
+                                    <span>Kopírovat</span>
+                                </button>
+                            </div>
+                            <pre id="vcardPreviewText" class="text-[11px] leading-relaxed font-mono overflow-x-auto text-slate-200 whitespace-pre-wrap break-all"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tip pro Android -->
+                <aside class="bg-m3-secondaryContainer/50 rounded-2xl p-4 flex items-start gap-3 border border-m3-outlineVariant/20">
+                    <div class="w-8 h-8 rounded-full bg-m3-primary/15 text-m3-primary flex items-center justify-center shrink-0 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4"/>
+                            <path d="M12 8h.01"/>
+                        </svg>
+                    </div>
+                    <div class="text-xs text-slate-700 leading-relaxed">
+                        <strong class="font-semibold text-slate-900">Tip pro Android:</strong> Po stažení souboru <code>.vcf</code> na něj klepněte v liště oznámení – telefon rovnou nabídne uložení do aplikace <strong>Kontakty</strong>.
+                    </div>
+                </aside>
+            </div>
+
+            <!-- === POHLED 3: HISTORIE VIZITEK === -->
+            <section id="historyView" class="hidden space-y-4">
+                <!-- Vyhledávání a hromadné akce -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-m3-outlineVariant/30 space-y-3">
+                    <div class="relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                        </svg>
+                        <input id="historySearchInput" type="search" placeholder="Hledat jméno, firmu, telefon, e-mail…"
+                            class="w-full rounded-full bg-m3-surfaceContainerLow border border-m3-outlineVariant/60 focus:border-m3-primary focus:bg-white focus:ring-2 focus:ring-m3-primary/15 outline-none pl-10 pr-4 py-2.5 text-sm transition">
+                    </div>
+
+                    <div id="historyBulkActions" class="flex items-center justify-between gap-2 pt-1">
+                        <button id="exportAllBtn" type="button"
+                            class="flex-1 py-2.5 px-3 rounded-full bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:bg-m3-primaryContainer/70 active:scale-[0.98] text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" x2="12" y1="15" y2="3"/>
+                            </svg>
+                            <span>Exportovat vše</span>
+                        </button>
+                        <button id="deleteAllBtn" type="button"
+                            class="py-2.5 px-3.5 rounded-full bg-m3-errorContainer/70 text-m3-onErrorContainer hover:bg-m3-errorContainer active:scale-[0.98] text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                            </svg>
+                            <span>Smazat vše</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Seznam uložených vizitek -->
+                <div id="historyList" class="space-y-3"></div>
+
+                <!-- Prázdný stav historie -->
+                <div id="historyEmptyState" class="hidden bg-white rounded-3xl p-8 text-center border border-m3-outlineVariant/30 space-y-3">
+                    <div class="w-14 h-14 mx-auto rounded-full bg-m3-surfaceContainer text-m3-secondary flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                            <path d="M12 7v5l4 2"/>
+                        </svg>
+                    </div>
+                    <h3 id="historyEmptyTitle" class="text-base font-semibold text-slate-800">Zatím žádné uložené vizitky</h3>
+                    <p id="historyEmptyDesc" class="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                        Naskenujte vizitku nebo vložte text a uložte si kontakt do historie pro rychlý export kdykoliv později.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <!-- 3. SPODNÍ NAVIGAČNÍ LIŠTA (Material Design 3 Navigation Bar) -->
+        <nav aria-label="Hlavní navigace"
+            class="fixed sm:sticky bottom-0 inset-x-0 max-w-md mx-auto bg-m3-surfaceContainerLow/95 backdrop-blur-md border-t border-m3-outlineVariant/40 px-2 pt-2 pb-2 safe-bottom z-20">
+            <div class="grid grid-cols-3 gap-1">
+                <!-- Záložka 1: Vyfotit / Nahrát -->
+                <button id="navImageBtn" type="button" class="flex flex-col items-center justify-center gap-1 py-1 rounded-2xl transition active:scale-95">
+                    <div id="navImagePill" class="w-16 h-8 rounded-full flex items-center justify-center transition-colors bg-m3-secondaryContainer text-m3-onSecondaryContainer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                            <circle cx="12" cy="13" r="3"/>
+                        </svg>
+                    </div>
+                    <span id="navImageLabel" class="text-[11px] font-semibold text-m3-onSecondaryContainer">Vyfotit / Nahrát</span>
+                </button>
+
+                <!-- Záložka 2: Vložit text -->
+                <button id="navTextBtn" type="button" class="flex flex-col items-center justify-center gap-1 py-1 rounded-2xl transition active:scale-95">
+                    <div id="navTextPill" class="w-16 h-8 rounded-full flex items-center justify-center transition-colors text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 6.1H3"/>
+                            <path d="M21 12.1H3"/>
+                            <path d="M15.1 18H3"/>
+                        </svg>
+                    </div>
+                    <span id="navTextLabel" class="text-[11px] font-medium text-slate-600">Vložit text</span>
+                </button>
+
+                <!-- Záložka 3: Historie -->
+                <button id="navHistoryBtn" type="button" class="flex flex-col items-center justify-center gap-1 py-1 rounded-2xl transition active:scale-95">
+                    <div id="navHistoryPill" class="relative w-16 h-8 rounded-full flex items-center justify-center transition-colors text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                            <path d="M12 7v5l4 2"/>
+                        </svg>
+                        <!-- Živý odznak s počtem uložených vizitek -->
+                        <span id="historyCountBadge" class="hidden absolute -top-0.5 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-m3-primary text-white text-[10px] font-bold flex items-center justify-center">0</span>
+                    </div>
+                    <span id="navHistoryLabel" class="text-[11px] font-medium text-slate-600">Historie</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Material 3 Snackbar (nad spodní lištou) -->
+        <div id="snackbar"
+            class="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap max-w-[90vw] truncate">
+        </div>
+
+        <!-- 2. MODAL NASTAVENÍ VLASTNÍHO GEMINI API KLÍČE -->
+        <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+            <div class="w-full max-w-sm bg-m3-surface rounded-[28px] shadow-2xl border border-m3-outlineVariant/40 p-5 space-y-4">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Nastavení Gemini API</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Pro fungování AI na vlastním hostingu</p>
+                    </div>
+                    <button id="closeSettingsBtn" type="button" aria-label="Zavřít nastavení"
+                        class="p-1.5 rounded-full text-slate-500 hover:bg-m3-surfaceContainerHigh transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Aktuální stav klíče -->
+                <div id="apiStatusBox" class="rounded-2xl px-3.5 py-2.5 text-xs font-medium flex items-center gap-2 bg-m3-surfaceContainer text-slate-700">
+                    <span id="apiStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+                    <span id="apiStatusText">Používá se výchozí prostředí</span>
+                </div>
+
+                <!-- Pole pro zadání API klíče s přepínačem zobrazit/skrýt -->
+                <div class="space-y-1.5">
+                    <label for="apiKeyInput" class="block text-xs font-medium text-slate-700 px-1">Vlastní Gemini API klíč</label>
+                    <div class="relative">
+                        <input id="apiKeyInput" type="password" autocomplete="off" placeholder="AIzaSy..."
+                            class="w-full rounded-xl bg-white border border-m3-outlineVariant focus:border-m3-primary focus:ring-2 focus:ring-m3-primary/20 outline-none pl-3.5 pr-11 py-2.5 text-sm font-mono transition">
+                        <button id="toggleApiKeyVisBtn" type="button" aria-label="Zobrazit nebo skrýt klíč"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">
+                            <svg id="eyeOpenIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <svg id="eyeClosedIcon" xmlns="http://www.w3.org/2000/svg" class="hidden w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                                <line x1="2" x2="22" y1="2" y2="22"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stručný návod v češtině -->
+                <div class="rounded-2xl bg-m3-surfaceContainerLow p-3.5 text-xs text-slate-600 space-y-1.5 leading-relaxed border border-m3-outlineVariant/30">
+                    <p class="font-semibold text-slate-800">Jak získat bezplatný klíč?</p>
+                    <p>
+                        Otevřete <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-m3-primary font-semibold underline">Google AI Studio</a>, přihlaste se účtem Google a klikněte na <em>Create API key</em>.
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        Klíč se ukládá výhradně lokálně v tomto telefonu/prohlížeči a nikam jinam se neodesílá.
+                    </p>
+                </div>
+
+                <!-- Tlačítka Uložit a Smazat klíč -->
+                <div class="flex items-center justify-end gap-2 pt-1">
+                    <button id="deleteApiKeyBtn" type="button"
+                        class="px-4 py-2.5 rounded-full text-xs font-semibold text-m3-error hover:bg-m3-errorContainer/60 transition">
+                        Smazat klíč
+                    </button>
+                    <button id="saveApiKeyBtn" type="button"
+                        class="px-5 py-2.5 rounded-full bg-m3-primary hover:bg-[#005858] text-white text-xs font-semibold shadow-sm active:scale-95 transition">
+                        Uložit klíč
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POTVRZOVACÍ DIALOG PRO SMAZÁNÍ CELÉ HISTORIE (Material Design 3) -->
+        <div id="confirmDeleteAllModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+            <div class="w-full max-w-xs bg-m3-surface rounded-[28px] shadow-2xl border border-m3-outlineVariant/40 p-6 space-y-4">
+                <div class="w-11 h-11 rounded-full bg-m3-errorContainer text-m3-onErrorContainer flex items-center justify-center mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                </div>
+                <div class="text-center space-y-1.5">
+                    <h3 class="text-base font-semibold text-slate-900">Smazat celou historii?</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Všechny uložené vizitky z tohoto prohlížeče budou trvale odstraněny. Tuto akci nelze vrátit zpět.
+                    </p>
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button id="cancelDeleteAllBtn" type="button"
+                        class="px-4 py-2.5 rounded-full text-xs font-semibold text-m3-secondary hover:bg-m3-surfaceContainerHigh transition">
+                        Zrušit
+                    </button>
+                    <button id="confirmDeleteAllBtn" type="button"
+                        class="px-4 py-2.5 rounded-full bg-m3-error hover:opacity-90 text-white text-xs font-semibold shadow-sm active:scale-95 transition">
+                        Smazat vše
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Vizitka do kontaktů — Kompletní klientská logika
+         * - Podpora vlastního Gemini API klíče v localStorage i výchozího prostředí náhledu
+         * - AI extrakce strukturovaného JSONu z fotky nebo textu (gemini-3-flash-preview)
+         * - Standardizace českých telefonů (+420) a webových adres (https://)
+         * - Validní vCard 3.0 (UTF-8) + hromadný export a správa historie v localStorage
+         */
+
+        // Výchozí klíč zůstává prázdný – prostředí náhledu jej automaticky doplní
+        const apiKey = "";
+        const GEMINI_MODEL = "gemini-3-flash-preview";
+        const STORAGE_KEY_API = "vizitka_gemini_api_key";
+        const STORAGE_KEY_HISTORY = "vizitka_saved_contacts_v1";
+
+        const FORM_FIELDS = [
+            "firstName", "lastName", "prefix", "suffix",
+            "company", "title", "mobile", "workPhone",
+            "email", "website", "street", "city",
+            "zip", "country", "note"
+        ];
+
+        // Stav aplikace
+        const state = {
+            activeTab: "image", // 'image' | 'text' | 'history'
+            imageBase64: null,
+            imageMimeType: "image/jpeg",
+            isExtracting: false,
+            previewOpen: false,
+            editingId: null,
+            history: []
+        };
+
+        // Reference na DOM prvky
+        const els = {
+            // Horní lišta a nastavení
+            openSettingsBtn: document.getElementById("openSettingsBtn"),
+            apiKeyIndicator: document.getElementById("apiKeyIndicator"),
+            settingsModal: document.getElementById("settingsModal"),
+            closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+            apiKeyInput: document.getElementById("apiKeyInput"),
+            toggleApiKeyVisBtn: document.getElementById("toggleApiKeyVisBtn"),
+            eyeOpenIcon: document.getElementById("eyeOpenIcon"),
+            eyeClosedIcon: document.getElementById("eyeClosedIcon"),
+            apiStatusBox: document.getElementById("apiStatusBox"),
+            apiStatusDot: document.getElementById("apiStatusDot"),
+            apiStatusText: document.getElementById("apiStatusText"),
+            saveApiKeyBtn: document.getElementById("saveApiKeyBtn"),
+            deleteApiKeyBtn: document.getElementById("deleteApiKeyBtn"),
+
+            // Spodní navigace
+            navImageBtn: document.getElementById("navImageBtn"),
+            navTextBtn: document.getElementById("navTextBtn"),
+            navHistoryBtn: document.getElementById("navHistoryBtn"),
+            navImagePill: document.getElementById("navImagePill"),
+            navTextPill: document.getElementById("navTextPill"),
+            navHistoryPill: document.getElementById("navHistoryPill"),
+            navImageLabel: document.getElementById("navImageLabel"),
+            navTextLabel: document.getElementById("navTextLabel"),
+            navHistoryLabel: document.getElementById("navHistoryLabel"),
+            historyCountBadge: document.getElementById("historyCountBadge"),
+
+            // Pracovní plochy
+            scannerWorkspace: document.getElementById("scannerWorkspace"),
+            panelImage: document.getElementById("panelImage"),
+            panelText: document.getElementById("panelText"),
+            historyView: document.getElementById("historyView"),
+
+            // Vstup: Fotka a Text
+            cameraInput: document.getElementById("cameraInput"),
+            galleryInput: document.getElementById("galleryInput"),
+            openCameraBtn: document.getElementById("openCameraBtn"),
+            openGalleryBtn: document.getElementById("openGalleryBtn"),
+            uploadDropzone: document.getElementById("uploadDropzone"),
+            imagePreviewContainer: document.getElementById("imagePreviewContainer"),
+            imagePreview: document.getElementById("imagePreview"),
+            imageFileName: document.getElementById("imageFileName"),
+            removeImageBtn: document.getElementById("removeImageBtn"),
+            changeImageBtn: document.getElementById("changeImageBtn"),
+            rawTextInput: document.getElementById("rawTextInput"),
+            clearTextBtn: document.getElementById("clearTextBtn"),
+
+            // AI Extrakce a stav
+            extractBtn: document.getElementById("extractBtn"),
+            extractIcon: document.getElementById("extractIcon"),
+            extractSpinner: document.getElementById("extractSpinner"),
+            extractBtnText: document.getElementById("extractBtnText"),
+            statusBanner: document.getElementById("statusBanner"),
+            statusIcon: document.getElementById("statusIcon"),
+            statusMessage: document.getElementById("statusMessage"),
+            statusActionWrap: document.getElementById("statusActionWrap"),
+            statusOpenSettingsBtn: document.getElementById("statusOpenSettingsBtn"),
+
+            // Formulář a vCard akce
+            contactFormSection: document.getElementById("contactFormSection"),
+            contactForm: document.getElementById("contactForm"),
+            formSubtitle: document.getElementById("formSubtitle"),
+            filledBadge: document.getElementById("filledBadge"),
+            downloadAndSaveBtn: document.getElementById("downloadAndSaveBtn"),
+            saveHistoryOnlyBtn: document.getElementById("saveHistoryOnlyBtn"),
+            togglePreviewBtn: document.getElementById("togglePreviewBtn"),
+            previewChevron: document.getElementById("previewChevron"),
+            resetFormBtn: document.getElementById("resetFormBtn"),
+            vcardPreviewBox: document.getElementById("vcardPreviewBox"),
+            vcardPreviewText: document.getElementById("vcardPreviewText"),
+            vcardFileNamePreview: document.getElementById("vcardFileNamePreview"),
+            copyVcardBtn: document.getElementById("copyVcardBtn"),
+
+            // Historie
+            historySearchInput: document.getElementById("historySearchInput"),
+            historyBulkActions: document.getElementById("historyBulkActions"),
+            exportAllBtn: document.getElementById("exportAllBtn"),
+            deleteAllBtn: document.getElementById("deleteAllBtn"),
+            historyList: document.getElementById("historyList"),
+            historyEmptyState: document.getElementById("historyEmptyState"),
+            historyEmptyTitle: document.getElementById("historyEmptyTitle"),
+            historyEmptyDesc: document.getElementById("historyEmptyDesc"),
+            confirmDeleteAllModal: document.getElementById("confirmDeleteAllModal"),
+            cancelDeleteAllBtn: document.getElementById("cancelDeleteAllBtn"),
+            confirmDeleteAllBtn: document.getElementById("confirmDeleteAllBtn"),
+
+            // Snackbar
+            snackbar: document.getElementById("snackbar")
+        };
+
+        let snackbarTimer = null;
+
+        /**
+         * Zobrazí Material 3 Snackbar notifikaci
+         */
+        function showSnackbar(message) {
+            els.snackbar.textContent = message;
+            els.snackbar.classList.remove("opacity-0", "pointer-events-none");
+            els.snackbar.classList.add("opacity-100");
+            clearTimeout(snackbarTimer);
+            snackbarTimer = setTimeout(() => {
+                els.snackbar.classList.remove("opacity-100");
+                els.snackbar.classList.add("opacity-0", "pointer-events-none");
+            }, 3000);
+        }
+
+        /**
+         * Bezpečné načtení a uložení vlastního Gemini API klíče v localStorage
+         */
+        function getCustomApiKey() {
+            try {
+                return (localStorage.getItem(STORAGE_KEY_API) || "").trim();
+            } catch {
+                return "";
+            }
+        }
+
+        function updateApiKeyUI() {
+            const customKey = getCustomApiKey();
+            if (customKey) {
+                els.apiKeyIndicator.classList.remove("hidden");
+                els.apiStatusBox.className = "rounded-2xl px-3.5 py-2.5 text-xs font-medium flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200";
+                els.apiStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0";
+                els.apiStatusText.textContent = "Aktivní vlastní klíč";
+            } else {
+                els.apiKeyIndicator.classList.add("hidden");
+                els.apiStatusBox.className = "rounded-2xl px-3.5 py-2.5 text-xs font-medium flex items-center gap-2 bg-m3-surfaceContainer text-slate-700";
+                els.apiStatusDot.className = "w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0";
+                els.apiStatusText.textContent = "Používá se výchozí prostředí";
+            }
+        }
+
+        function openSettingsModal() {
+            els.apiKeyInput.value = getCustomApiKey();
+            els.apiKeyInput.type = "password";
+            els.eyeOpenIcon.classList.remove("hidden");
+            els.eyeClosedIcon.classList.add("hidden");
+            updateApiKeyUI();
+            els.settingsModal.classList.remove("hidden");
+        }
+
+        function closeSettingsModal() {
+            els.settingsModal.classList.add("hidden");
+        }
+
+        /**
+         * Zobrazení stavového banneru u AI extrakce
+         */
+        function showStatus(type, message, showSettingsAction = false) {
+            els.statusBanner.classList.remove(
+                "hidden",
+                "bg-m3-errorContainer", "text-m3-onErrorContainer",
+                "bg-m3-primaryContainer/70", "text-m3-onPrimaryContainer"
+            );
+
+            if (type === "error") {
+                els.statusBanner.classList.add("bg-m3-errorContainer", "text-m3-onErrorContainer");
+                els.statusIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
+            } else {
+                els.statusBanner.classList.add("bg-m3-primaryContainer/70", "text-m3-onPrimaryContainer");
+                els.statusIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+            }
+
+            els.statusMessage.textContent = message;
+            els.statusActionWrap.classList.toggle("hidden", !showSettingsAction);
+        }
+
+        function hideStatus() {
+            els.statusBanner.classList.add("hidden");
+            els.statusActionWrap.classList.add("hidden");
+        }
+
+        /**
+         * Přepínání mezi 3 záložkami spodní navigace
+         */
+        function switchTab(tab) {
+            state.activeTab = tab;
+            hideStatus();
+
+            const navItems = [
+                { key: "image", pill: els.navImagePill, label: els.navImageLabel },
+                { key: "text", pill: els.navTextPill, label: els.navTextLabel },
+                { key: "history", pill: els.navHistoryPill, label: els.navHistoryLabel }
+            ];
+
+            navItems.forEach(item => {
+                const isActive = item.key === tab;
+                item.pill.classList.toggle("bg-m3-secondaryContainer", isActive);
+                item.pill.classList.toggle("text-m3-onSecondaryContainer", isActive);
+                item.pill.classList.toggle("text-slate-600", !isActive);
+                item.label.classList.toggle("font-semibold", isActive);
+                item.label.classList.toggle("text-m3-onSecondaryContainer", isActive);
+                item.label.classList.toggle("font-medium", !isActive);
+                item.label.classList.toggle("text-slate-600", !isActive);
+            });
+
+            if (tab === "history") {
+                els.scannerWorkspace.classList.add("hidden");
+                els.historyView.classList.remove("hidden");
+                renderHistory();
+            } else {
+                els.historyView.classList.add("hidden");
+                els.scannerWorkspace.classList.remove("hidden");
+                els.panelImage.classList.toggle("hidden", tab !== "image");
+                els.panelText.classList.toggle("hidden", tab !== "text");
+            }
+        }
+
+        /**
+         * Zpracování a zmenšení fotky vizitky pro rychlé odeslání do AI
+         */
+        function processImageFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith("image/")) {
+                showStatus("error", "Vyberte prosím platný obrázek (JPG, PNG, WEBP).");
+                return;
+            }
+
+            hideStatus();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX_DIM = 1600;
+                    let { width, height } = img;
+
+                    if (width > MAX_DIM || height > MAX_DIM) {
+                        if (width > height) {
+                            height = Math.round((height * MAX_DIM) / width);
+                            width = MAX_DIM;
+                        } else {
+                            width = Math.round((width * MAX_DIM) / height);
+                            height = MAX_DIM;
+                        }
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+                    state.imageBase64 = dataUrl.split(",")[1];
+                    state.imageMimeType = "image/jpeg";
+
+                    els.imagePreview.src = dataUrl;
+                    els.imageFileName.textContent = file.name || "vizitka.jpg";
+                    els.uploadDropzone.classList.add("hidden");
+                    els.imagePreviewContainer.classList.remove("hidden");
+                };
+                img.onerror = () => {
+                    showStatus("error", "Nepodařilo se načíst vybraný obrázek. Zkuste to prosím znovu.");
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearImage() {
+            state.imageBase64 = null;
+            els.cameraInput.value = "";
+            els.galleryInput.value = "";
+            els.imagePreview.src = "";
+            els.imagePreviewContainer.classList.add("hidden");
+            els.uploadDropzone.classList.remove("hidden");
+        }
+
+        /**
+         * Standardizace českých telefonních čísel (+420 XXX XXX XXX)
+         */
+        function standardizePhone(raw) {
+            if (!raw) return "";
+            const trimmed = raw.trim();
+            if (!trimmed) return "";
+
+            const hasPlus = trimmed.startsWith("+");
+            const digitsOnly = trimmed.replace(/\D/g, "");
+
+            if (digitsOnly.startsWith("00420") && digitsOnly.length === 14) {
+                const local = digitsOnly.slice(5);
+                return `+420 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6, 9)}`;
+            }
+            if ((hasPlus || digitsOnly.length === 12) && digitsOnly.startsWith("420") && digitsOnly.length === 12) {
+                const local = digitsOnly.slice(3);
+                return `+420 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6, 9)}`;
+            }
+            if (!hasPlus && digitsOnly.length === 9) {
+                return `+420 ${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6, 9)}`;
+            }
+            return trimmed;
+        }
+
+        /**
+         * Standardizace webových adres (doplnění https://)
+         */
+        function standardizeWebsite(raw) {
+            if (!raw) return "";
+            const trimmed = raw.trim();
+            if (!trimmed) return "";
+            if (!/^https?:\/\//i.test(trimmed)) {
+                return "https://" + trimmed;
+            }
+            return trimmed;
+        }
+
+        /**
+         * Fetch s exponenciálním backoffem (1s, 2s, 4s...) pro případ throttlingu
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            let delay = 1000;
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    // Neopakovat při chybách autorizace (400/401/403)
+                    if (response.status === 400 || response.status === 401 || response.status === 403) {
+                        return response;
+                    }
+                    if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    return response;
+                } catch (err) {
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw err;
+                }
+            }
+        }
+
+        function setLoadingState(loading) {
+            state.isExtracting = loading;
+            els.extractBtn.disabled = loading;
+            els.extractIcon.classList.toggle("hidden", loading);
+            els.extractSpinner.classList.toggle("hidden", !loading);
+            els.extractBtnText.textContent = loading ? "Rozpoznávám údaje…" : "Rozpoznat údaje pomocí AI";
+        }
+
+        /**
+         * Extrakce kontaktních údajů pomocí Gemini API
+         */
+        async function extractContactData() {
+            hideStatus();
+
+            if (state.activeTab === "image" && !state.imageBase64) {
+                showStatus("error", "Nejprve vyfoťte vizitku nebo vyberte obrázek z galerie.");
+                return;
+            }
+
+            const rawText = els.rawTextInput.value.trim();
+            if (state.activeTab === "text" && !rawText) {
+                showStatus("error", "Vložte prosím text s kontaktními údaji.");
+                return;
+            }
+
+            setLoadingState(true);
+
+            const customKey = getCustomApiKey();
+            const activeKey = customKey || apiKey;
+
+            try {
+                const systemInstructionText =
+                    "Jsi přesný asistent pro extrakci kontaktních údajů z vizitek, screenshotů a podpisů v češtině i jiných jazycích. " +
+                    "Rozděl údaje přesně do požadovaných JSON polí. " +
+                    "Tituly před jménem (Ing., Mgr., MUDr., Bc.) dej do 'prefix', tituly za jménem (Ph.D., MBA, DiS.) do 'suffix'. " +
+                    "Do 'firstName' a 'lastName' dej čisté jméno a příjmení bez titulů. " +
+                    "Českým 9místným telefonním číslům bez mezinárodní předvolby doplň '+420 '. " +
+                    "Webovým adresám bez protokolu doplň 'https://'. " +
+                    "Do 'note' uveď doplňující údaje (IČO, DIČ, LinkedIn, poznámky). " +
+                    "Pro chybějící údaje vždy vrať prázdný řetězec \"\".";
+
+                const parts = [];
+                if (state.activeTab === "image") {
+                    parts.push({ text: "Extrahuj všechny kontaktní údaje z této vizitky nebo obrázku." });
+                    parts.push({
+                        inlineData: {
+                            mimeType: state.imageMimeType,
+                            data: state.imageBase64
+                        }
+                    });
+                } else {
+                    parts.push({ text: `Extrahuj všechny kontaktní údaje z následujícího textu:\n\n${rawText}` });
+                }
+
+                const payload = {
+                    contents: [{ role: "user", parts }],
+                    systemInstruction: { parts: [{ text: systemInstructionText }] },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                firstName: { type: "STRING" },
+                                lastName: { type: "STRING" },
+                                prefix: { type: "STRING" },
+                                suffix: { type: "STRING" },
+                                company: { type: "STRING" },
+                                title: { type: "STRING" },
+                                mobile: { type: "STRING" },
+                                workPhone: { type: "STRING" },
+                                email: { type: "STRING" },
+                                website: { type: "STRING" },
+                                street: { type: "STRING" },
+                                city: { type: "STRING" },
+                                zip: { type: "STRING" },
+                                country: { type: "STRING" },
+                                note: { type: "STRING" }
+                            },
+                            propertyOrdering: FORM_FIELDS
+                        }
+                    }
+                };
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(activeKey)}`;
+                const response = await fetchWithRetry(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    if (response.status === 400 || response.status === 401 || response.status === 403) {
+                        if (!customKey) {
+                            showStatus(
+                                "error",
+                                "Pro fungování AI čtení vizitek na vlastním hostingu je potřeba zadat vlastní bezplatný Gemini API klíč.",
+                                true
+                            );
+                        } else {
+                            showStatus(
+                                "error",
+                                "Zadaný Gemini API klíč byl odmítnut (chyba autorizace). Zkontrolujte jej prosím v nastavení.",
+                                true
+                            );
+                        }
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) {
+                    throw new Error("Prázdná odpověď z AI.");
+                }
+
+                const data = JSON.parse(jsonText);
+                const normalized = normalizeContactData(data);
+
+                state.editingId = null;
+                fillForm(normalized);
+
+                const hasAnyValue = FORM_FIELDS.some(f => Boolean(normalized[f]));
+                if (hasAnyValue) {
+                    els.filledBadge.textContent = "Načteno AI";
+                    els.filledBadge.classList.remove("hidden");
+                    els.formSubtitle.textContent = "Zkontrolujte nebo upravte před uložením";
+                    showStatus("success", "Údaje byly úspěšně rozpoznány. Zkontrolujte je níže.");
+                    setTimeout(() => {
+                        els.contactFormSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 180);
+                } else {
+                    showStatus("error", "Z podkladu se nepodařilo rozpoznat žádné údaje. Zkuste ostřejší fotku nebo je doplňte ručně.");
+                }
+            } catch (err) {
+                showStatus("error", "Nepodařilo se spojit s AI službou. Zkontrolujte připojení k internetu a zkuste to znovu.");
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        /**
+         * Normalizace dat kontaktu (telefony, web, ořezání mezer)
+         */
+        function normalizeContactData(raw) {
+            return {
+                firstName: (raw.firstName || "").trim(),
+                lastName: (raw.lastName || "").trim(),
+                prefix: (raw.prefix || "").trim(),
+                suffix: (raw.suffix || "").trim(),
+                company: (raw.company || raw.org || "").trim(),
+                title: (raw.title || "").trim(),
+                mobile: standardizePhone(raw.mobile || ""),
+                workPhone: standardizePhone(raw.workPhone || ""),
+                email: (raw.email || "").trim(),
+                website: standardizeWebsite(raw.website || ""),
+                street: (raw.street || "").trim(),
+                city: (raw.city || "").trim(),
+                zip: (raw.zip || "").trim(),
+                country: (raw.country || "").trim(),
+                note: (raw.note || "").trim()
+            };
+        }
+
+        function fillForm(data) {
+            FORM_FIELDS.forEach(field => {
+                const input = document.getElementById(field);
+                if (input) input.value = data[field] || "";
+            });
+            updateVCardPreview();
+        }
+
+        function getFormData() {
+            const raw = {};
+            FORM_FIELDS.forEach(field => {
+                const el = document.getElementById(field);
+                raw[field] = el ? el.value : "";
+            });
+            return normalizeContactData(raw);
+        }
+
+        /**
+         * Sestavení validního vCard 3.0 (UTF-8) pro zadaný objekt kontaktu
+         */
+        function escapeVCard(str) {
+            if (!str) return "";
+            return str
+                .replace(/\\/g, "\\\\")
+                .replace(/;/g, "\\;")
+                .replace(/,/g, "\\,")
+                .replace(/\r?\n/g, "\\n");
+        }
+
+        function getDisplayName(d) {
+            const namePart = [d.prefix, d.firstName, d.lastName].filter(Boolean).join(" ");
+            let full = namePart;
+            if (d.suffix) {
+                full = full ? `${full}, ${d.suffix}` : d.suffix;
+            }
+            return full || d.company || d.email || d.mobile || "Nový kontakt";
+        }
+
+        function buildVCardFromData(d) {
+            const lines = ["BEGIN:VCARD", "VERSION:3.0"];
+
+            if (d.firstName || d.lastName || d.prefix || d.suffix) {
+                lines.push(
+                    `N;CHARSET=UTF-8:${escapeVCard(d.lastName)};${escapeVCard(d.firstName)};;${escapeVCard(d.prefix)};${escapeVCard(d.suffix)}`
+                );
+            }
+
+            lines.push(`FN;CHARSET=UTF-8:${escapeVCard(getDisplayName(d))}`);
+
+            if (d.company) lines.push(`ORG;CHARSET=UTF-8:${escapeVCard(d.company)}`);
+            if (d.title) lines.push(`TITLE;CHARSET=UTF-8:${escapeVCard(d.title)}`);
+            if (d.mobile) lines.push(`TEL;TYPE=CELL,VOICE:${standardizePhone(d.mobile)}`);
+            if (d.workPhone) lines.push(`TEL;TYPE=WORK,VOICE:${standardizePhone(d.workPhone)}`);
+            if (d.email) lines.push(`EMAIL;TYPE=INTERNET,WORK:${d.email}`);
+            if (d.website) lines.push(`URL:${standardizeWebsite(d.website)}`);
+
+            if (d.street || d.city || d.zip || d.country) {
+                lines.push(
+                    `ADR;TYPE=WORK;CHARSET=UTF-8:;;${escapeVCard(d.street)};${escapeVCard(d.city)};;${escapeVCard(d.zip)};${escapeVCard(d.country)}`
+                );
+            }
+
+            if (d.note) lines.push(`NOTE;CHARSET=UTF-8:${escapeVCard(d.note)}`);
+
+            lines.push("END:VCARD");
+            return lines.join("\r\n");
+        }
+
+        /**
+         * Název souboru ve formátu jmeno_prijmeni.vcf (malá písmena, bez diakritiky)
+         */
+        function buildFileNameFromData(d) {
+            const base = [d.firstName, d.lastName].filter(Boolean).join(" ") || d.company;
+            if (!base) return "kontakt.vcf";
+
+            const clean = base
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "");
+
+            return clean ? `${clean}.vcf` : "kontakt.vcf";
+        }
+
+        function updateVCardPreview() {
+            const d = getFormData();
+            els.vcardPreviewText.textContent = buildVCardFromData(d);
+            els.vcardFileNamePreview.textContent = buildFileNameFromData(d);
+        }
+
+        function triggerFileDownload(content, fileName) {
+            const blob = new Blob([content], { type: "text/vcard;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function copyVCardText() {
+            const text = buildVCardFromData(getFormData());
+            const temp = document.createElement("textarea");
+            temp.value = text;
+            temp.style.position = "fixed";
+            temp.style.opacity = "0";
+            document.body.appendChild(temp);
+            temp.select();
+
+            try {
+                document.execCommand("copy");
+                showSnackbar("vCard zkopírována do schránky.");
+            } catch {
+                showSnackbar("Kopírování se nezdařilo.");
+            } finally {
+                document.body.removeChild(temp);
+            }
+        }
+
+        /**
+         * === SPRÁVA HISTORIE (localStorage) ===
+         */
+        function loadHistory() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                state.history = Array.isArray(parsed) ? parsed : [];
+            } catch {
+                state.history = [];
+            }
+            updateHistoryBadge();
+        }
+
+        function persistHistory() {
+            try {
+                localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(state.history));
+            } catch {
+                showSnackbar("Nepodařilo se uložit historii do prohlížeče.");
+            }
+            updateHistoryBadge();
+        }
+
+        function updateHistoryBadge() {
+            const count = state.history.length;
+            els.historyCountBadge.textContent = count > 99 ? "99+" : String(count);
+            els.historyCountBadge.classList.toggle("hidden", count === 0);
+        }
+
+        function saveCurrentToHistory() {
+            const d = getFormData();
+            const hasAnyField = FORM_FIELDS.some(f => Boolean(d[f]));
+            if (!hasAnyField) {
+                showSnackbar("Vyplňte prosím alespoň jeden údaj kontaktu.");
+                return null;
+            }
+
+            const nowIso = new Date().toISOString();
+
+            if (state.editingId) {
+                const idx = state.history.findIndex(item => item.id === state.editingId);
+                if (idx !== -1) {
+                    state.history[idx] = { ...d, id: state.editingId, savedAt: nowIso };
+                    // Přesunout aktualizovaný kontakt nahoru
+                    const [updated] = state.history.splice(idx, 1);
+                    state.history.unshift(updated);
+                    persistHistory();
+                    return updated;
+                }
+            }
+
+            const newItem = {
+                ...d,
+                id: "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+                savedAt: nowIso
+            };
+            state.history.unshift(newItem);
+            state.editingId = newItem.id;
+            persistHistory();
+            return newItem;
+        }
+
+        function getInitials(d) {
+            const first = (d.firstName || "").trim();
+            const last = (d.lastName || "").trim();
+            if (first && last) return (first[0] + last[0]).toUpperCase();
+            const fallback = (first || last || d.company || d.email || "?").trim();
+            return fallback.slice(0, 2).toUpperCase();
+        }
+
+        function formatSavedDate(iso) {
+            try {
+                const date = new Date(iso);
+                return date.toLocaleDateString("cs-CZ", {
+                    day: "numeric",
+                    month: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            } catch {
+                return "";
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function renderHistory() {
+            const query = (els.historySearchInput.value || "").trim().toLowerCase();
+            const filtered = state.history.filter(item => {
+                if (!query) return true;
+                const haystack = [
+                    item.firstName, item.lastName, item.prefix, item.suffix,
+                    item.company, item.title, item.mobile, item.workPhone, item.email
+                ].join(" ").toLowerCase();
+                return haystack.includes(query);
+            });
+
+            els.historyBulkActions.classList.toggle("hidden", state.history.length === 0);
+
+            if (filtered.length === 0) {
+                els.historyList.innerHTML = "";
+                els.historyEmptyState.classList.remove("hidden");
+                if (state.history.length > 0 && query) {
+                    els.historyEmptyTitle.textContent = "Žádná shoda";
+                    els.historyEmptyDesc.textContent = `Pro výraz „${els.historySearchInput.value.trim()}“ nebyla nalezena žádná vizitka.`;
+                } else {
+                    els.historyEmptyTitle.textContent = "Zatím žádné uložené vizitky";
+                    els.historyEmptyDesc.textContent = "Naskenujte vizitku nebo vložte text a uložte si kontakt do historie pro rychlý export kdykoliv později.";
+                }
+                return;
+            }
+
+            els.historyEmptyState.classList.add("hidden");
+
+            els.historyList.innerHTML = filtered.map(item => {
+                const displayName = escapeHtml(getDisplayName(item));
+                const subline = [item.title, item.company].filter(Boolean).join(" • ");
+                const contactLine = [item.mobile || item.workPhone, item.email].filter(Boolean).join(" · ");
+                const initials = escapeHtml(getInitials(item));
+                const dateStr = escapeHtml(formatSavedDate(item.savedAt));
+
+                return `
+                    <article class="bg-white rounded-3xl p-4 shadow-sm border border-m3-outlineVariant/30 space-y-3" data-id="${escapeHtml(item.id)}">
+                        <div class="flex items-start gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-m3-primaryContainer text-m3-onPrimaryContainer font-semibold text-sm flex items-center justify-center shrink-0">
+                                ${initials}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-sm font-semibold text-slate-900 truncate">${displayName}</h3>
+                                ${subline ? `<p class="text-xs text-slate-600 truncate">${escapeHtml(subline)}</p>` : ""}
+                                ${contactLine ? `<p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(contactLine)}</p>` : ""}
+                                <p class="text-[11px] text-slate-400 mt-1">Uloženo: ${dateStr}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 pt-2 border-t border-m3-outlineVariant/20">
+                            <button type="button" data-action="download" data-id="${escapeHtml(item.id)}"
+                                class="flex-1 py-2 px-3 rounded-full bg-m3-primary text-white text-xs font-medium hover:bg-[#005858] active:scale-95 transition flex items-center justify-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                <span>Stáhnout .vcf</span>
+                            </button>
+                            <button type="button" data-action="edit" data-id="${escapeHtml(item.id)}"
+                                class="py-2 px-3.5 rounded-full bg-m3-surfaceContainer text-m3-onSecondaryContainer text-xs font-medium hover:bg-m3-secondaryContainer/70 active:scale-95 transition">
+                                Upravit
+                            </button>
+                            <button type="button" data-action="delete" data-id="${escapeHtml(item.id)}" aria-label="Smazat vizitku"
+                                class="p-2 rounded-full text-m3-error hover:bg-m3-errorContainer/60 active:scale-95 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function resetForm() {
+            clearImage();
+            els.rawTextInput.value = "";
+            els.contactForm.reset();
+            state.editingId = null;
+            els.filledBadge.classList.add("hidden");
+            els.formSubtitle.textContent = "Zkontrolujte, upravte nebo zadejte ručně";
+            hideStatus();
+            updateVCardPreview();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            showSnackbar("Formulář byl vymazán.");
+        }
+
+        // === REGISTRACE POSLUCHAČŮ UDÁLOSTÍ ===
+
+        // Navigace
+        els.navImageBtn.addEventListener("click", () => switchTab("image"));
+        els.navTextBtn.addEventListener("click", () => switchTab("text"));
+        els.navHistoryBtn.addEventListener("click", () => switchTab("history"));
+
+        // Nastavení API klíče
+        els.openSettingsBtn.addEventListener("click", openSettingsModal);
+        els.statusOpenSettingsBtn.addEventListener("click", openSettingsModal);
+        els.closeSettingsBtn.addEventListener("click", closeSettingsModal);
+        els.settingsModal.addEventListener("click", (e) => {
+            if (e.target === els.settingsModal) closeSettingsModal();
+        });
+
+        els.toggleApiKeyVisBtn.addEventListener("click", () => {
+            const isHidden = els.apiKeyInput.type === "password";
+            els.apiKeyInput.type = isHidden ? "text" : "password";
+            els.eyeOpenIcon.classList.toggle("hidden", isHidden);
+            els.eyeClosedIcon.classList.toggle("hidden", !isHidden);
+        });
+
+        els.saveApiKeyBtn.addEventListener("click", () => {
+            const val = els.apiKeyInput.value.trim();
+            if (!val) {
+                showSnackbar("Zadejte prosím platný API klíč.");
+                return;
+            }
+            try {
+                localStorage.setItem(STORAGE_KEY_API, val);
+                updateApiKeyUI();
+                closeSettingsModal();
+                hideStatus();
+                showSnackbar("Vlastní Gemini API klíč byl uložen.");
+            } catch {
+                showSnackbar("Nepodařilo se uložit klíč do prohlížeče.");
+            }
+        });
+
+        els.deleteApiKeyBtn.addEventListener("click", () => {
+            try {
+                localStorage.removeItem(STORAGE_KEY_API);
+                els.apiKeyInput.value = "";
+                updateApiKeyUI();
+                showSnackbar("Vlastní API klíč byl smazán.");
+            } catch {
+                showSnackbar("Nepodařilo se smazat klíč.");
+            }
+        });
+
+        // Obrázek a text
+        els.openCameraBtn.addEventListener("click", () => els.cameraInput.click());
+        els.openGalleryBtn.addEventListener("click", () => els.galleryInput.click());
+        els.changeImageBtn.addEventListener("click", () => els.galleryInput.click());
+        els.removeImageBtn.addEventListener("click", clearImage);
+        els.cameraInput.addEventListener("change", (e) => processImageFile(e.target.files[0]));
+        els.galleryInput.addEventListener("change", (e) => processImageFile(e.target.files[0]));
+
+        els.clearTextBtn.addEventListener("click", () => {
+            els.rawTextInput.value = "";
+            els.rawTextInput.focus();
+        });
+
+        // AI extrakce
+        els.extractBtn.addEventListener("click", extractContactData);
+
+        // Akce formuláře
+        els.downloadAndSaveBtn.addEventListener("click", () => {
+            const saved = saveCurrentToHistory();
+            if (!saved) return;
+            const vcard = buildVCardFromData(saved);
+            const fileName = buildFileNameFromData(saved);
+            triggerFileDownload(vcard, fileName);
+            showSnackbar(`Stažen soubor ${fileName} a uloženo do historie.`);
+        });
+
+        els.saveHistoryOnlyBtn.addEventListener("click", () => {
+            const saved = saveCurrentToHistory();
+            if (!saved) return;
+            showSnackbar("Vizitka byla uložena do historie.");
+        });
+
+        els.resetFormBtn.addEventListener("click", resetForm);
+        els.copyVcardBtn.addEventListener("click", copyVCardText);
+
+        els.togglePreviewBtn.addEventListener("click", () => {
+            state.previewOpen = !state.previewOpen;
+            els.vcardPreviewBox.classList.toggle("hidden", !state.previewOpen);
+            els.togglePreviewBtn.setAttribute("aria-expanded", String(state.previewOpen));
+            els.previewChevron.style.transform = state.previewOpen ? "rotate(180deg)" : "rotate(0deg)";
+            if (state.previewOpen) updateVCardPreview();
+        });
+
+        // Živá aktualizace náhledu a automatická standardizace polí
+        els.contactForm.addEventListener("input", () => {
+            if (state.previewOpen) updateVCardPreview();
+        });
+
+        document.getElementById("mobile").addEventListener("blur", (e) => {
+            e.target.value = standardizePhone(e.target.value);
+            if (state.previewOpen) updateVCardPreview();
+        });
+
+        document.getElementById("workPhone").addEventListener("blur", (e) => {
+            e.target.value = standardizePhone(e.target.value);
+            if (state.previewOpen) updateVCardPreview();
+        });
+
+        document.getElementById("website").addEventListener("blur", (e) => {
+            e.target.value = standardizeWebsite(e.target.value);
+            if (state.previewOpen) updateVCardPreview();
+        });
+
+        // Historie: vyhledávání a akce karet
+        els.historySearchInput.addEventListener("input", renderHistory);
+
+        els.historyList.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-action]");
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            const item = state.history.find(c => c.id === id);
+            if (!item) return;
+
+            if (action === "download") {
+                const fileName = buildFileNameFromData(item);
+                triggerFileDownload(buildVCardFromData(item), fileName);
+                showSnackbar(`Soubor ${fileName} byl stažen.`);
+            } else if (action === "edit") {
+                state.editingId = item.id;
+                fillForm(item);
+                els.filledBadge.textContent = "Úprava";
+                els.filledBadge.classList.remove("hidden");
+                els.formSubtitle.textContent = "Upravujete uloženou vizitku z historie";
+                switchTab("image");
+                setTimeout(() => {
+                    els.contactFormSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 150);
+                showSnackbar("Vizitka načtena k úpravě.");
+            } else if (action === "delete") {
+                state.history = state.history.filter(c => c.id !== id);
+                if (state.editingId === id) state.editingId = null;
+                persistHistory();
+                renderHistory();
+                showSnackbar("Vizitka byla smazána.");
+            }
+        });
+
+        // Hromadný export všech vizitek
+        els.exportAllBtn.addEventListener("click", () => {
+            if (state.history.length === 0) return;
+            const allVcards = state.history.map(buildVCardFromData).join("\r\n");
+            triggerFileDownload(allVcards, "vsechny_vizitky.vcf");
+            showSnackbar(`Exportováno ${state.history.length} vizitek (vsechny_vizitky.vcf).`);
+        });
+
+        // Potvrzovací dialog pro smazání celé historie
+        els.deleteAllBtn.addEventListener("click", () => {
+            if (state.history.length === 0) return;
+            els.confirmDeleteAllModal.classList.remove("hidden");
+        });
+
+        els.cancelDeleteAllBtn.addEventListener("click", () => {
+            els.confirmDeleteAllModal.classList.add("hidden");
+        });
+
+        els.confirmDeleteAllModal.addEventListener("click", (e) => {
+            if (e.target === els.confirmDeleteAllModal) {
+                els.confirmDeleteAllModal.classList.add("hidden");
+            }
+        });
+
+        els.confirmDeleteAllBtn.addEventListener("click", () => {
+            state.history = [];
+            state.editingId = null;
+            persistHistory();
+            renderHistory();
+            els.confirmDeleteAllModal.classList.add("hidden");
+            showSnackbar("Celá historie byla smazána.");
+        });
+
+        // Inicializace při startu
+        updateApiKeyUI();
+        loadHistory();
+        updateVCardPreview();
+    </script>
+</body>
+</html>
